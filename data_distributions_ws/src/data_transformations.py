@@ -26,36 +26,26 @@ def extract_data_and_timestamps(bag_file, desired_topics):
 
     return data_dict, time_dict
 
-def plot_data(data_dict, time_dict, reference_topic, data_topic1, data_topic2):
-    pitch = [msg.vector.x for msg in data_dict[data_topic1]]
-    pitch_array = np.array(pitch)
-
-    velocityx = [msg.twist.twist.linear.x for msg in data_dict[data_topic2]]
-    velocityx_array = np.array(velocityx)
-
+def extract_data_arrays(data_dict, time_dict, data_topic1, data_topic2, reference_topic):
     time_vector = time_dict[reference_topic]
+    pitch_data = data_dict[data_topic1]
+    velocityx_data = data_dict[data_topic2]
 
+    # Interpolate data to match the time_vector
+    pitch_interp = np.interp(time_vector, time_dict[data_topic1], [msg.vector.x for msg in pitch_data])
+    velocityx_interp = np.interp(time_vector, time_dict[data_topic2], [msg.twist.twist.linear.x for msg in velocityx_data])
+
+    return pitch_interp, velocityx_interp, time_vector
+
+def plot_data(pitch_interp, velocityx_interp, time_vector):
     plt.figure(figsize=(12, 6))
-    plt.plot(time_vector, pitch_array, label='Pitch (Euler Angle)')
-    plt.plot(time_vector, velocityx_array, label='Linear Velocity (x)')
+    plt.plot(time_vector, pitch_interp, label='Pitch (Euler Angle)')
+    plt.plot(time_vector, velocityx_interp, label='Linear Velocity (x)')
     plt.xlabel('Time (seconds)')
     plt.ylabel('Value')
     plt.title('Pitch and Linear Velocity vs. Time')
     plt.legend()
     plt.show()
-
-def cut_data_to_time_frame(data_dict, time_dict, start_time, end_time):
-    for topic in data_dict:
-        topic_data = data_dict[topic]
-        topic_time = time_dict[topic]
-        new_data = []
-        new_time = []
-        for i in range(len(topic_time)):
-            if start_time <= topic_time[i] <= end_time:
-                new_data.append(topic_data[i])
-                new_time.append(topic_time[i])
-        data_dict[topic] = new_data
-        time_dict[topic] = new_time
 
 
 def main():
@@ -64,11 +54,15 @@ def main():
     reference_topic = '/mavros/euler'
     data_topic1 = '/mavros/euler'
     data_topic2 = '/mavros/local_position/odom'
-    start_time = 0.0 # [sec]
-    end_time = 30.0 # [sec]
+
     data_dict, time_dict = extract_data_and_timestamps(bag_file, desired_topics)
-    # cut_data_to_time_frame(data_dict, time_dict, start_time, end_time)
-    plot_data(data_dict, time_dict, reference_topic, data_topic1, data_topic2)
+    
+    pitch_interp, velocityx_interp, time_vector = extract_data_arrays(data_dict, time_dict, data_topic1, data_topic2, reference_topic)
+
+    plot_data(pitch_interp, velocityx_interp, time_vector)
+
+
+
 
 if __name__ == "__main__":
     main()
