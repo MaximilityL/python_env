@@ -47,6 +47,16 @@ def plot_data(pitch_interp, velocityx_interp, time_vector):
     plt.legend()
     plt.show()
 
+def cut_data_to_time_frame(pitch_array, velocityx_array, time_vector, start_time, end_time):
+    start_idx = np.searchsorted(time_vector, start_time)
+    end_idx = np.searchsorted(time_vector, end_time)
+
+    pitch_cut = pitch_array[start_idx:end_idx]
+    velocityx_cut = velocityx_array[start_idx:end_idx]
+    time_cut = time_vector[start_idx:end_idx]
+
+    return pitch_cut, velocityx_cut, time_cut
+
 
 def main():
     bag_file = '/home/maxim/Workspaces/python_env/data_distributions_ws/src/2023-10-30-11-53-38.bag'
@@ -59,7 +69,14 @@ def main():
     
     pitch_interp, velocityx_interp, time_vector = extract_data_arrays(data_dict, time_dict, data_topic1, data_topic2, reference_topic)
 
-    plot_data(pitch_interp, velocityx_interp, time_vector)
+    # Define the start and end times for cutting
+    start_time = 10.0  # Adjust this as needed
+    end_time = 20.0  # Adjust this as needed
+
+    pitch_cut, velocityx_cut, time_cut = cut_data_to_time_frame(pitch_interp, velocityx_interp, time_vector, start_time, end_time)
+
+
+    plot_data(pitch_cut, velocityx_cut, time_cut)
 
 
 
