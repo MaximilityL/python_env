@@ -44,14 +44,30 @@ def plot_data(data_dict, time_dict, reference_topic, data_topic1, data_topic2):
     plt.legend()
     plt.show()
 
+def cut_data_to_time_frame(data_dict, time_dict, start_time, end_time):
+    for topic in data_dict:
+        topic_data = data_dict[topic]
+        topic_time = time_dict[topic]
+        new_data = []
+        new_time = []
+        for i in range(len(topic_time)):
+            if start_time <= topic_time[i] <= end_time:
+                new_data.append(topic_data[i])
+                new_time.append(topic_time[i])
+        data_dict[topic] = new_data
+        time_dict[topic] = new_time
+
+
 def main():
     bag_file = '/home/maxim/Workspaces/python_env/data_distributions_ws/src/2023-10-30-11-53-38.bag'
     desired_topics = ['/mavros/euler', '/mavros/local_position/odom', '/mavros/local_position/pose']
     reference_topic = '/mavros/euler'
     data_topic1 = '/mavros/euler'
     data_topic2 = '/mavros/local_position/odom'
-
+    start_time = 0.0 # [sec]
+    end_time = 30.0 # [sec]
     data_dict, time_dict = extract_data_and_timestamps(bag_file, desired_topics)
+    # cut_data_to_time_frame(data_dict, time_dict, start_time, end_time)
     plot_data(data_dict, time_dict, reference_topic, data_topic1, data_topic2)
 
 if __name__ == "__main__":
