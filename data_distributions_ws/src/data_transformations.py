@@ -36,9 +36,10 @@ def extract_data_arrays(data_dict, time_dict, data_topic1, data_topic2, referenc
 
     # Interpolate data to match the time_vector
     pitch_interp = np.interp(time_vector, time_dict[data_topic1], [msg.vector.y for msg in pitch_data])
+    yaw_interp = np.interp(time_vector, time_dict[data_topic1], [msg.vector.z for msg in pitch_data])
     velocityx_interp = np.interp(time_vector, time_dict[data_topic2], [msg.twist.twist.linear.x for msg in velocityx_data])
 
-    return pitch_interp, velocityx_interp, time_vector
+    return pitch_interp,yaw_interp, velocityx_interp, time_vector
 
 def plot_data(pitch_interp, velocityx_interp, time_vector):
     # Create a new figure explicitly
@@ -117,8 +118,8 @@ def getInterpolatedPitchAndVelocityData():
     data_topic2 = '/mavros/local_position/odom'
 
     data_dict, time_dict = extract_data_and_timestamps(bag_file, desired_topics)
-    pitch_interp, velocityx_interp, time_vector = extract_data_arrays(data_dict, time_dict, data_topic1, data_topic2, reference_topic)
-    return pitch_interp, velocityx_interp, time_vector
+    pitch_interp, yaw_interp, velocityx_interp, time_vector = extract_data_arrays(data_dict, time_dict, data_topic1, data_topic2, reference_topic)
+    return pitch_interp, yaw_interp, velocityx_interp, time_vector
 
 def cutAndCalcAndPrintMeanAndSTD(pitch_interp, velocityx_interp, time_vector, start_time, end_time):
     pitch_cut, velocityx_cut, time_cut = cut_data_to_time_frame(pitch_interp, velocityx_interp, time_vector, start_time, end_time)
@@ -272,8 +273,8 @@ def calculate_rmse_and_pearson_at_intervals(pitch_interp, velocityx_interp, time
         # if ( c > 1.25):
         #     c =1
 
-        print("normalized_std divide:", c - 1)
-        c_values.append(c - 1)
+        print("normalized_std divide:", c)
+        c_values.append(c)
         print("At time of" , time_vector[start_idx] + (time_vector[end_idx] - time_vector[start_idx]) / 2, " [sec]")
 
         # plot_two_graphs(pitch_segment, velocityx_segment, time_segment, pitch_segment_standartisized, velocityx_segment_stadartisized, time_segment)
@@ -296,9 +297,9 @@ def plot_pitch_velocity_rmse(time_vector, pitch_interp, velocityx_interp, c_valu
 
     # Create a secondary y-axis on the right for RMSE in the top plot
     ax2 = ax1.twinx()
-    ax2.plot(rmse_times, rmse_values, label='rmse', color='r', marker='o')  # Adjust the 's' parameter for marker size
+    # ax2.plot(rmse_times, rmse_values, label='rmse', color='r', marker='o')  # Adjust the 's' parameter for marker size
     ax2.plot(rmse_times, c_values, label='std_divition', color='c', marker='o')  # Adjust the 's' parameter for marker size
-    ax2.plot(rmse_times, (rmse_values * c_values) / pearson_values, label='Libman\'s Coefficient', color='y', marker='o')  # Adjust the 's' parameter for marker size
+    # ax2.plot(rmse_times, (rmse_values * c_values) / pearson_values, label='Libman\'s Coefficient', color='y', marker='o')  # Adjust the 's' parameter for marker size
 
     ax2.set_ylabel('RMSE', color='black')
     ax2.tick_params(axis='y', labelcolor='black')
@@ -368,9 +369,9 @@ def cubic_interpolate(x, y, new_x):
 
 def main():
 
-    pitch_interp, velocityx_interp, time_vector = getInterpolatedPitchAndVelocityData()
+    pitch_interp,yaw_interp, velocityx_interp, time_vector = getInterpolatedPitchAndVelocityData()
 
-    interval = 5  # Interval for RMSE calculation 
+    interval = 8  # Interval for RMSE calculation 
     increment = 0.5  # Increment for time calculation 
     time_shift = 1.0 # Delay between Pitch and velocity
     rmse_values, rmse_times, c_values, pearson_correlation_values = calculate_rmse_and_pearson_at_intervals(pitch_interp, velocityx_interp, time_vector, interval, increment, time_shift)
@@ -381,7 +382,7 @@ def main():
     
 
     # plot_pitch_velocity_rmse(time_vector, pitch_interp, velocityx_interp, rmse_values, rmse_times,)
-    plot_pitch_velocity_rmse(time_vector, pitch_interp, velocityx_interp, c_values_normalized,rmse_values_normalized, pearson_correlation_values, rmse_times)
+    plot_pitch_velocity_rmse(time_vector, yaw_interp, velocityx_interp, c_values,rmse_values_normalized, pearson_correlation_values, rmse_times)
 
 
     # # Create a time vector for the interpolated RMSE values
