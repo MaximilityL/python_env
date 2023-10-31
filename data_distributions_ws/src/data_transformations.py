@@ -140,7 +140,7 @@ def normalizeAndPrintPitchAndVelocity(pitch_cut,velocityx_cut, time_cut):
 
     return pitch_normalized, velocityx_normalized
 
-def calculate_rmse_at_intervals(pitch_interp, velocityx_interp, time_vector, interval, increment):
+def calculate_rmse_at_intervals(pitch_interp, velocityx_interp, time_vector, interval, increment, time_shift_range, time_shift_increment):
     rmse_values = []  # Initialize an empty list to store RMSE values
    
     for start_time in np.arange(0, time_vector[-1] - interval, increment):
@@ -149,13 +149,24 @@ def calculate_rmse_at_intervals(pitch_interp, velocityx_interp, time_vector, int
         end_idx = np.searchsorted(time_vector, end_time)
 
         pitch_segment = pitch_interp[start_idx:end_idx]
-        velocityx_segment = velocityx_interp[start_idx:end_idx]
-        time_segment = time_vector[start_idx:end_idx]
-        pitch_segment_normalized = normalize_to_standard_normal(pitch_segment)
-        velocityx_segment_normalized = normalize_to_standard_normal(velocityx_segment)
-        # plot_data(pitch_segment_normalized, velocityx_segment_normalized, time_segment)
-        rmse = calculate_rmse(pitch_segment_normalized, velocityx_segment_normalized)
-        rmse_values.append(rmse)
+
+        for time_shift in np.arange(-time_shift_range, time_shift_range + time_shift_increment, time_shift_increment):
+            # Shift the data in time for this interval
+            shifted_time_vector = time_vector + time_shift
+            if (shifted_time_vector[0] < time_vector[0]):
+                shifted_time_vector = shifted_time_vector + abs(shifted_time_vector[0])
+            if (shifted_time_vector[-1] > time_vector[-1]):
+                shifted_time_vector = shifted_time_vector - abs(shifted_time_vector[-1])
+            shifted_start_idx = np.searchsorted(shifted_time_vector, start_time)
+            shifted_end_idx = np.searchsorted(shifted_time_vector, end_time)
+            
+            velocityx_segment = velocityx_interp[shifted_start_idx:shifted_end_idx]
+            time_segment = time_vector[start_idx:end_idx]
+            pitch_segment_normalized = normalize_to_standard_normal(pitch_segment)
+            velocityx_segment_normalized = normalize_to_standard_normal(velocityx_segment)
+            # plot_data(pitch_segment_normalized, velocityx_segment_normalized, time_segment)
+            rmse = calculate_rmse(pitch_segment_normalized, velocityx_segment_normalized)
+            rmse_values.append(rmse)
 
     return rmse_values
 
@@ -194,7 +205,9 @@ def main():
 
     interval = 3  # Interval for RMSE calculation 
     increment = 1  # Increment for time calculation 
-    rmse_values = calculate_rmse_at_intervals(pitch_interp, velocityx_interp, time_vector, interval, increment)
+    time_shift_range = 1 # Range for RMSE time shift 
+    time_shift_increment = 0.1 # Increment for time shift calculation 
+    rmse_values = calculate_rmse_at_intervals(pitch_interp, velocityx_interp, time_vector, interval, increment, time_shift_range, time_shift_increment)
     
     # Create a time vector for the interpolated RMSE values
     interpolated_time_vector = np.linspace(time_vector[0], time_vector[-1], len(rmse_values))
