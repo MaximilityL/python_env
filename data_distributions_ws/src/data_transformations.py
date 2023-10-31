@@ -1,6 +1,7 @@
 import rosbag
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.interpolate import interp1d
 
 def extract_data_and_timestamps(bag_file, desired_topics):
     data_dict = {topic: [] for topic in desired_topics}
@@ -139,15 +140,70 @@ def normalizeAndPrintPitchAndVelocity(pitch_cut,velocityx_cut, time_cut):
 
     return pitch_normalized, velocityx_normalized
 
-def main():
-    
-    pitch_interp, velocityx_interp, time_vector = getInterpolatedPitchAndVelocityData()
-    start_time = 33.0
-    end_time = start_time + 3
-    
-    pitch_cut, velocityx_cut, time_cut = cutAndCalcAndPrintMeanAndSTD(pitch_interp, velocityx_interp, time_vector, start_time, end_time)
+def calculate_rmse_at_intervals(pitch_interp, velocityx_interp, time_vector, interval, increment):
+    rmse_values = []  # Initialize an empty list to store RMSE values
+   
+    for start_time in np.arange(0, time_vector[-1] - interval, increment):
+        end_time = start_time + interval
+        start_idx = np.searchsorted(time_vector, start_time)
+        end_idx = np.searchsorted(time_vector, end_time)
 
-    normalizeAndPrintPitchAndVelocity(pitch_cut,velocityx_cut, time_cut)
+        pitch_segment = pitch_interp[start_idx:end_idx]
+        velocityx_segment = velocityx_interp[start_idx:end_idx]
+        time_segment = time_vector[start_idx:end_idx]
+        pitch_segment_normalized = normalize_to_standard_normal(pitch_segment)
+        velocityx_segment_normalized = normalize_to_standard_normal(velocityx_segment)
+        # plot_data(pitch_segment_normalized, velocityx_segment_normalized, time_segment)
+        rmse = calculate_rmse(pitch_segment_normalized, velocityx_segment_normalized)
+        rmse_values.append(rmse)
+
+    return rmse_values
+
+def plot_pitch_velocity_rmse(time_vector, pitch_interp, velocityx_interp, rmse_values):
+    fig, ax1 = plt.subplots(figsize=(12, 6))
+
+    # Plot pitch_interp and velocityx_interp on the primary y-axis
+    ax1.plot(time_vector, pitch_interp, label='Pitch (Euler Angle)', color='b')
+    ax1.plot(time_vector, velocityx_interp, label='Linear Velocity (x)', color='g')
+    ax1.set_xlabel('Time (seconds)')
+    ax1.set_ylabel('Pitch and Velocity', color='black')
+    ax1.tick_params(axis='y', labelcolor='black')
+    
+    # Create a secondary y-axis on the right for RMSE
+    ax2 = ax1.twinx()
+
+    # Trim the last element of rmse_values to match the dimensions
+    rmse_values = rmse_values[:len(time_vector)]
+
+    ax2.plot(time_vector, rmse_values, label='RMSE', color='r', linestyle='dashed')
+    ax2.set_ylabel('RMSE', color='black')
+    ax2.tick_params(axis='y', labelcolor='black')
+
+    fig.tight_layout()
+    plt.title('Pitch, Velocity, and RMSE vs. Time')
+    plt.legend()
+    plt.show()
+
+def cubic_interpolate(x, y, new_x):
+    cubic_interpolator = interp1d(x, y, kind='cubic')
+    return cubic_interpolator(new_x)
+
+def main():
+
+    pitch_interp, velocityx_interp, time_vector = getInterpolatedPitchAndVelocityData()
+
+    interval = 3  # Interval for RMSE calculation 
+    increment = 1  # Increment for time calculation 
+    rmse_values = calculate_rmse_at_intervals(pitch_interp, velocityx_interp, time_vector, interval, increment)
+    
+    # Create a time vector for the interpolated RMSE values
+    interpolated_time_vector = np.linspace(time_vector[0], time_vector[-1], len(rmse_values))
+    
+    # Perform cubic interpolation for RMSE values
+    interpolated_rmse = cubic_interpolate(interpolated_time_vector, rmse_values, time_vector)
+
+    # Call the new function to plot the data
+    plot_pitch_velocity_rmse(time_vector, pitch_interp, velocityx_interp, interpolated_rmse)
 
 if __name__ == "__main__":
     main()
